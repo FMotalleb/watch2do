@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fmotalleb/watch2do/cli"
+	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -19,10 +20,10 @@ var rootCmd = &cobra.Command{
 
 simple usage:
   # in this example, watch2do will listen for any change in current working directory and wait 2.5seconds before printing "files changed"
-  watch2do --execute "echo files changed" --watch "*" --debounce 2500
+  watch2do --execute "echo files changed" --watch "*" --debounce 2500ms
 `,
 
-	Example: "  watch2do --execute 'echo files changed' --watch '*' --debounce 2500",
+	Example: "  watch2do --execute 'echo files changed' --watch '*' --debounce 2500ms",
 
 	Run: func(cmd *cobra.Command, args []string) {
 		var level logrus.Level
@@ -31,12 +32,14 @@ simple usage:
 		} else {
 			level = logrus.InfoLevel
 		}
+
 		Params = cli.Params{
-			Shell:     getString(cmd.Flags(), "shell"),
-			WatchList: getArray(cmd.Flags(), "watch"),
-			Commands:  getArray(cmd.Flags(), "execute"),
-			Debounce:  getDuration(cmd.Flags(), "debounce"),
-			LogLevel:  level,
+			Shell:      getString(cmd.Flags(), "shell"),
+			WatchList:  getArray(cmd.Flags(), "watch"),
+			Commands:   getArray(cmd.Flags(), "execute"),
+			Debounce:   getDuration(cmd.Flags(), "debounce"),
+			LogLevel:   level,
+			Operations: getTriggerFlags(cmd.Flags()),
 		}
 	},
 }
@@ -83,6 +86,34 @@ func getBool(flags *pflag.FlagSet, name string) bool {
 	}
 	return r
 }
+func getTriggerFlags(flags *pflag.FlagSet) []fsnotify.Op {
+	mapper := map[string]fsnotify.Op{
+		"no-create": fsnotify.Create,
+		"no-write":  fsnotify.Write,
+		"no-rename": fsnotify.Rename,
+		"no-remove": fsnotify.Remove,
+		"no-chmod":  fsnotify.Chmod,
+	}
+	resultChan := make(chan fsnotify.Op, 5)
+	go func() {
+		for k, v := range mapper {
+			r, err := flags.GetBool(k)
+			if err != nil {
+				os.Exit(1)
+			}
+			if r == false {
+				resultChan <- v
+			}
+		}
+		close(resultChan)
+	}()
+	result := make([]fsnotify.Op, 0)
+	for i := range resultChan {
+		result = append(result, i)
+	}
+	return result
+}
+
 func init() {
 	rootCmd.Flags().StringSliceP("execute", "x", []string{}, "Commands to execute after receiving a change event")
 	rootCmd.Flags().StringSliceP("watch", "w", []string{}, "Files/Directories to watch (supports glob pattern)")
@@ -93,4 +124,9 @@ func init() {
 	} else {
 		rootCmd.Flags().StringP("shell", "s", "cmd /c", "Shell executable for windows by default uses `cmd /c`")
 	}
+	rootCmd.Flags().Bool("no-write", false, "Trigger on write")
+	rootCmd.Flags().Bool("no-create", false, "Trigger on create")
+	rootCmd.Flags().Bool("no-rename", false, "Trigger on rename")
+	rootCmd.Flags().Bool("no-remove", false, "Trigger on remove")
+	rootCmd.Flags().Bool("no-chmod", false, "Trigger on chmod")
 }

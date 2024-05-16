@@ -4,13 +4,19 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fmotalleb/watch2do/cmd"
+	"github.com/fmotalleb/watch2do/fallback"
 	"github.com/fsnotify/fsnotify"
 	"github.com/ryanuber/go-glob"
 )
 
 // New directory watcher
 func New(notifier chan interface{}, paths ...string) {
+	defer func() {
+		fallback.CaptureError(log, recover())
+	}()
 	setupLog()
+
 	log.Debugf("Watching over %q\n", paths)
 	if len(paths) < 1 {
 		log.Panicf("No path given, falling back\n")
@@ -45,6 +51,16 @@ func coreLoop(notifier chan interface{}, w *fsnotify.Watcher, paths []string) {
 				return
 			}
 			for _, path := range paths {
+				accepted := false
+				for _, op := range cmd.Params.Operations {
+					if op == e.Op {
+						accepted = true
+						break
+					}
+				}
+				if accepted == false {
+					break
+				}
 				if glob.Glob(path, e.Name) {
 					log.Debugf("matched %v using %v globe\n", e.Name, path)
 					notifier <- 0

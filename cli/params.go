@@ -3,6 +3,7 @@ package cli
 import (
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,5 +19,6 @@ type Params struct {
 	//   and if the program receive any other events from the given `WatchList` current action will be discarded and rescheduled
 	Debounce time.Duration
 	// LogLevel of the application
-	LogLevel logrus.Level
+	LogLevel   logrus.Level
+	Operations []fsnotify.Op
 }
