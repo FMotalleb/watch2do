@@ -2,13 +2,20 @@ package watcher
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/fmotalleb/watch2do/cmd"
 	"github.com/fmotalleb/watch2do/fallback"
+	"github.com/fmotalleb/watch2do/logger"
 	"github.com/fsnotify/fsnotify"
 	"github.com/ryanuber/go-glob"
+	"github.com/sirupsen/logrus"
 )
+
+var log *logrus.Logger
+
+func setupLog() {
+	log = logger.SetupLogger("Watcher")
+}
 
 // New directory watcher
 func New(notifier chan interface{}, paths ...string) {
@@ -16,21 +23,23 @@ func New(notifier chan interface{}, paths ...string) {
 		fallback.CaptureError(log, recover())
 	}()
 	setupLog()
-
-	log.Debugf("Watching over %q\n", paths)
+	log.WithField("paths", paths).Debugln("Started Watching")
 	if len(paths) < 1 {
 		log.Panicf("No path given, falling back\n")
 	}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Panicf("cannot init new watcher: %s\n", err)
+		log.WithField("error", err).Panicln("failed to initialize watcher")
 	}
 	defer w.Close()
 	go coreLoop(notifier, w, paths)
 	for _, p := range paths {
 		err = w.Add(filepath.Dir(p))
 		if err != nil {
-			log.Warnf("Cannot watch %q: %s\n", p, err)
+			log.WithFields(logrus.Fields{
+				"path":  p,
+				"error": err,
+			}).Panicln("Cannot Watch given path")
 		}
 	}
 	<-make(chan struct{})
@@ -41,13 +50,13 @@ func coreLoop(notifier chan interface{}, w *fsnotify.Watcher, paths []string) {
 		select {
 		case err, ok := <-w.Errors:
 			if !ok {
-				log.Debugf("received error at from fsnotify: %v", err)
+				log.WithField("error", err).Debugln("received error at from fsnotify")
 				return
 			}
 		case e, ok := <-w.Events:
-			log.Debugf("event received: %v\n", e)
+			log.WithField("event", e).Debugln("event received")
 			if !ok {
-				log.Debugf("a not ok event received for: %v\n", e)
+				log.WithField("event", e).Debugln("fail event received")
 				return
 			}
 			for _, path := range paths {
@@ -62,11 +71,10 @@ func coreLoop(notifier chan interface{}, w *fsnotify.Watcher, paths []string) {
 					break
 				}
 				if glob.Glob(path, e.Name) {
-					log.Debugf("matched %v using %v globe\n", e.Name, path)
-					notifier <- 0
-					break
-				} else if strings.HasPrefix(e.Name, path) {
-					log.Debugf("matched %v using %v by recursive rule\n", e.Name, path)
+					log.WithFields(logrus.Fields{
+						"matcher":    path,
+						"event_data": e.Name,
+					}).Debugln("matched found")
 					notifier <- 0
 					break
 				}

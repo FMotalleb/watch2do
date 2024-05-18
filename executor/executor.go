@@ -8,8 +8,15 @@ import (
 
 	"github.com/fmotalleb/watch2do/cmd"
 	"github.com/fmotalleb/watch2do/fallback"
+	"github.com/fmotalleb/watch2do/logger"
 	"github.com/sirupsen/logrus"
 )
+
+var log *logrus.Logger
+
+func setupLog() {
+	log = logger.SetupLogger("Executor")
+}
 
 func panicOn(note string, err error) {
 	if err != nil {
@@ -37,12 +44,12 @@ func push(pid int) {
 }
 
 func RunCommands() {
+	setupLog()
 	counter++
 	defer func() {
 		fallback.CaptureError(log, recover())
 	}()
 
-	setupLog()
 	killOldInstances()
 
 	proc := strings.Split(cmd.Params.Shell, " ")
@@ -57,7 +64,7 @@ func RunCommands() {
 				warnOn("cannot get stdout of child", err)
 				stderr, err := process.StderrPipe()
 				warnOn("cannot get stderr of child", err)
-				go io.Copy(os.Stdout, stdout)
+				go io.Copy(os.Stderr, stdout)
 				go io.Copy(os.Stderr, stderr)
 			}
 			logger.Debugln("stdout and strerr attached")

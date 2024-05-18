@@ -21,4 +21,5 @@ type Params struct {
 	// LogLevel of the application
 	LogLevel   logrus.Level
 	Operations []fsnotify.Op
+	JsonOutput bool
 }

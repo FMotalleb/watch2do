@@ -40,6 +40,7 @@ simple usage:
 			Debounce:   getDuration(cmd.Flags(), "debounce"),
 			LogLevel:   level,
 			Operations: getTriggerFlags(cmd.Flags()),
+			JsonOutput: getBool(cmd.Flags(), "log-json"),
 		}
 	},
 }
@@ -129,4 +130,5 @@ func init() {
 	rootCmd.Flags().Bool("no-rename", false, "Trigger on rename")
 	rootCmd.Flags().Bool("no-remove", false, "Trigger on remove")
 	rootCmd.Flags().Bool("no-chmod", false, "Trigger on chmod")
+	rootCmd.Flags().Bool("log-json", false, "Use json logger instead of text logger")
 }

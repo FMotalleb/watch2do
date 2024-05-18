@@ -2,7 +2,16 @@ package debounce
 
 import (
 	"time"
+
+	"github.com/fmotalleb/watch2do/logger"
+	"github.com/sirupsen/logrus"
 )
+
+var log *logrus.Logger
+
+func setupLog() {
+	log = logger.SetupLogger("Debounce")
+}
 
 // Filter the input channel with given delay and signals output channel
 func Filter(input <-chan interface{}, output chan<- interface{}, delay time.Duration) {
