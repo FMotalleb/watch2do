@@ -120,10 +120,10 @@ func init() {
 	rootCmd.Flags().StringSliceP("watch", "w", []string{}, "Files/Directories to watch (supports glob pattern)")
 	rootCmd.Flags().DurationP("debounce", "d", time.Microsecond, "Debounce time (wait time before executing command or receiving another event)")
 	rootCmd.Flags().BoolP("verbose", "v", false, "Verbose logging")
-	if runtime.GOOS == "linux" {
-		rootCmd.Flags().StringP("shell", "s", "sh -c", "Shell executable for linux by default uses `sh -c`")
-	} else {
+	if runtime.GOOS == "windows" {
 		rootCmd.Flags().StringP("shell", "s", "cmd /c", "Shell executable for windows by default uses `cmd /c`")
+	} else {
+		rootCmd.Flags().StringP("shell", "s", "sh -c", "Shell executable for linux by default uses `sh -c`")
 	}
 	rootCmd.Flags().Bool("no-write", false, "Trigger on write")
 	rootCmd.Flags().Bool("no-create", false, "Trigger on create")

@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/fmotalleb/watch2do/cmd"
@@ -18,14 +20,15 @@ func setupLog() {
 	log = logger.SetupLogger("Executor")
 }
 
-func panicOn(note string, err error) {
+func panicOn(log *logrus.Entry, note string, err error) {
 	if err != nil {
-		log.Panicf("%s, Error: %s", note, err)
+		log.WithField("error", err).Panicln(note)
 	}
 }
-func warnOn(note string, err error) {
+func warnOn(log *logrus.Entry, note string, err error) {
+
 	if err != nil {
-		log.Warnf("%s, Error: %s", note, err)
+		log.WithField("error", err).Warnln(note)
 	}
 }
 
@@ -50,32 +53,39 @@ func RunCommands() {
 		fallback.CaptureError(log, recover())
 	}()
 
-	killOldInstances()
+	logger := log.WithField("cycle_number", counter)
+	killOldInstances(logger)
 
 	proc := strings.Split(cmd.Params.Shell, " ")
 	go func() {
 		for _, command := range cmd.Params.Commands {
-			logger := log.WithField("signal id", counter).WithField("process", command)
+			logger := logger.WithField("process", command)
 			args := append(proc[1:], command)
 			logger.Infof("executing `%s` with args: %v", proc[0], args)
 			process := exec.Command(proc[0], args...)
 			if cmd.Params.LogLevel == logrus.DebugLevel {
 				stdout, err := process.StdoutPipe()
-				warnOn("cannot get stdout of child", err)
+				log.WithFields(logrus.Fields{
+					"error": err,
+					"pipe":  "stdout",
+				}).Warningln("cannot get processes stdout pipe")
+				warnOn(logger, "cannot get stdout of child", err)
 				stderr, err := process.StderrPipe()
-				warnOn("cannot get stderr of child", err)
+				warnOn(logger, "cannot get stderr of child", err)
 				go io.Copy(os.Stderr, stdout)
 				go io.Copy(os.Stderr, stderr)
 			}
-			logger.Debugln("stdout and strerr attached")
+			logger.Debugln("stdout and stderr attached")
 
 			initErr := process.Start()
-			panicOn("failed to start child process", initErr)
-			push(process.Process.Pid)
+			panicOn(logger, "failed to start child process", initErr)
+			pid := process.Process.Pid
+			push(pid)
+			logger = logger.WithField("pid", pid)
 			logger.Debugln("process started")
 
 			waitErr := process.Wait()
-			warnOn("cannot wait for process", waitErr)
+			warnOn(logger, "cannot wait for process", waitErr)
 			logger.Debugln("process done")
 			pop()
 		}
@@ -84,17 +94,48 @@ func RunCommands() {
 
 }
 
-func killOldInstances() {
+func killOldInstances(logger *logrus.Entry) {
 	for _, pid := range pids {
-		log.Debugf("trying to kill process with pid %d\n", pid)
-		process, err := os.FindProcess(pid)
-		process.Release()
-		if err != nil {
-			warnOn("cannot find a process from pervious execution", err)
-			continue
-		}
-		warnOn("cannot kill a process from pervious execution", process.Kill())
-		// log.Debugf("killed process with pid %d",pid)
+		killProcess(logger, pid)
 	}
-	pids = []int{}
 }
+
+func killProcess(logger *logrus.Entry, pid int) {
+	pidStr := strconv.Itoa(pid)
+
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("taskkill", "/PID", pidStr, "/F", "/T")
+	} else {
+		cmd = exec.Command("pkill", "-P", pidStr)
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		logger.Errorf("Failed to kill process with PID %d: %v", pid, err)
+		return
+	}
+
+	logger.Debugf("Successfully killed process with PID %d", pid)
+}
+
+// func killProcess(logger *logrus.Entry, pid int) {
+// 	pidStr := strconv.Itoa(pid)
+
+// 	var cmd *exec.Cmd
+
+// 	if runtime.GOOS == "windows" {
+// 		cmd = exec.Command("taskkill", "/PID", pidStr, "/F", "/T")
+// 	} else {
+// 		cmd = exec.Command("pkill", "-P", pidStr)
+// 	}
+
+// 	err := cmd.Run()
+// 	if err != nil {
+// 		logger.Errorf("Failed to kill process with PID %d: %v", pid, err)
+// 		return
+// 	}
+
+// 	logger.Debugf("Successfully killed process with PID %d", pid)
+// }
