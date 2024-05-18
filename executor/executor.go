@@ -4,13 +4,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/fmotalleb/watch2do/cmd"
 	"github.com/fmotalleb/watch2do/fallback"
 	"github.com/fmotalleb/watch2do/logger"
+	"github.com/shirou/gopsutil/process"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,7 +25,6 @@ func panicOn(log *logrus.Entry, note string, err error) {
 	}
 }
 func warnOn(log *logrus.Entry, note string, err error) {
-
 	if err != nil {
 		log.WithField("error", err).Warnln(note)
 	}
@@ -101,23 +99,25 @@ func killOldInstances(logger *logrus.Entry) {
 }
 
 func killProcess(logger *logrus.Entry, pid int) {
-	pidStr := strconv.Itoa(pid)
-
-	var cmd *exec.Cmd
-
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("taskkill", "/PID", pidStr, "/F", "/T")
-	} else {
-		cmd = exec.Command("pkill", "-P", pidStr)
-	}
-
-	err := cmd.Run()
+	processes, err := process.Processes()
+	warnOn(logger, "Failed to retrieve processes", err)
 	if err != nil {
-		logger.Errorf("Failed to kill process with PID %d: %v", pid, err)
 		return
 	}
 
-	logger.Debugf("Successfully killed process with PID %d", pid)
+	for _, p := range processes {
+		ppid, err := p.Ppid()
+		if err != nil {
+			continue
+		}
+		if int(ppid) == pid {
+			killProcess(logger, int(p.Pid))
+			p.Kill()
+		}
+		if int(p.Pid) == pid {
+			p.Kill()
+		}
+	}
 }
 
 // func killProcess(logger *logrus.Entry, pid int) {
