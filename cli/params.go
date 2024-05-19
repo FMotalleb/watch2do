@@ -19,7 +19,11 @@ type Params struct {
 	//   and if the program receive any other events from the given `WatchList` current action will be discarded and rescheduled
 	Debounce time.Duration
 	// LogLevel of the application
-	LogLevel   logrus.Level
+	LogLevel logrus.Level
+	// Accepted operations to act on
 	Operations []fsnotify.Op
+	// Use Json logger instead of text/ansi logger
 	JsonOutput bool
+	// Kill old processes from last invocations
+	KillBeforeExecute bool
 }

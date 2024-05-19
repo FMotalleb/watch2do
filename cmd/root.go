@@ -34,13 +34,14 @@ simple usage:
 		}
 
 		Params = cli.Params{
-			Shell:      getString(cmd.Flags(), "shell"),
-			WatchList:  getArray(cmd.Flags(), "watch"),
-			Commands:   getArray(cmd.Flags(), "execute"),
-			Debounce:   getDuration(cmd.Flags(), "debounce"),
-			LogLevel:   level,
-			Operations: getTriggerFlags(cmd.Flags()),
-			JsonOutput: getBool(cmd.Flags(), "log-json"),
+			Shell:             getString(cmd.Flags(), "shell"),
+			WatchList:         getArray(cmd.Flags(), "watch"),
+			Commands:          getArray(cmd.Flags(), "execute"),
+			Debounce:          getDuration(cmd.Flags(), "debounce"),
+			LogLevel:          level,
+			Operations:        getTriggerFlags(cmd.Flags()),
+			JsonOutput:        getBool(cmd.Flags(), "log-json"),
+			KillBeforeExecute: !getBool(cmd.Flags(), "no-kill"),
 		}
 	},
 }
@@ -95,28 +96,25 @@ func getTriggerFlags(flags *pflag.FlagSet) []fsnotify.Op {
 		"no-remove": fsnotify.Remove,
 		"no-chmod":  fsnotify.Chmod,
 	}
-	resultChan := make(chan fsnotify.Op, 5)
-	go func() {
-		for k, v := range mapper {
-			r, err := flags.GetBool(k)
-			if err != nil {
-				os.Exit(1)
-			}
-			if r == false {
-				resultChan <- v
-			}
-		}
-		close(resultChan)
-	}()
+
 	result := make([]fsnotify.Op, 0)
-	for i := range resultChan {
-		result = append(result, i)
+
+	for k, v := range mapper {
+		r, err := flags.GetBool(k)
+		if err != nil {
+			os.Exit(1)
+		}
+		if r == false {
+			result = append(result, v)
+		}
 	}
+
 	return result
 }
 
 func init() {
 	rootCmd.Flags().StringSliceP("execute", "x", []string{}, "Commands to execute after receiving a change event")
+	rootCmd.Flags().Bool("no-kill", false, "Don't kill old processes from last trigger")
 	rootCmd.Flags().StringSliceP("watch", "w", []string{}, "Files/Directories to watch (supports glob pattern)")
 	rootCmd.Flags().DurationP("debounce", "d", time.Microsecond, "Debounce time (wait time before executing command or receiving another event)")
 	rootCmd.Flags().BoolP("verbose", "v", false, "Verbose logging")
