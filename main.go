@@ -11,8 +11,9 @@ import (
 )
 
 func main() {
+
 	notifier := make(chan interface{})
-	go watcher.New(notifier, cmd.Params.WatchList...)
+	go watcher.New(notifier)
 	filtered := make(chan interface{})
 	go debounce.Filter(notifier, filtered, cmd.Params.Debounce)
 

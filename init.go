@@ -15,5 +15,17 @@ func init() {
 	defer func() {
 		fallback.CaptureError(log, recover())
 	}()
-	ValidateCliParams()
+	validateCliParams()
+}
+
+func validateCliParams() {
+	if len(cmd.Params.Commands) < 1 {
+		log.Panicln("commands must have at least a single value")
+	}
+	if len(cmd.Params.WatchList) < 1 {
+		log.Panicln("commands must have at least a single value")
+	}
+	if len(cmd.Params.Operations) < 1 {
+		log.Panicln("no operation to act on, stopping.")
+	}
 }

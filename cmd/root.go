@@ -36,12 +36,15 @@ simple usage:
 		Params = cli.Params{
 			Shell:             getString(cmd.Flags(), "shell"),
 			WatchList:         getArray(cmd.Flags(), "watch"),
+			ExcludeWatchList:  getArray(cmd.Flags(), "exclude"),
+			MatchList:         getArray(cmd.Flags(), "match"),
 			Commands:          getArray(cmd.Flags(), "execute"),
 			Debounce:          getDuration(cmd.Flags(), "debounce"),
 			LogLevel:          level,
 			Operations:        getTriggerFlags(cmd.Flags()),
 			JsonOutput:        getBool(cmd.Flags(), "log-json"),
 			KillBeforeExecute: !getBool(cmd.Flags(), "no-kill"),
+			Recursive:         getBool(cmd.Flags(), "recursive"),
 		}
 	},
 }
@@ -115,7 +118,10 @@ func getTriggerFlags(flags *pflag.FlagSet) []fsnotify.Op {
 func init() {
 	rootCmd.Flags().StringSliceP("execute", "x", []string{}, "Commands to execute after receiving a change event")
 	rootCmd.Flags().Bool("no-kill", false, "Don't kill old processes from last trigger")
-	rootCmd.Flags().StringSliceP("watch", "w", []string{"*", "**/*"}, "Files/Directories to watch (supports glob pattern)")
+	rootCmd.Flags().StringSliceP("watch", "w", []string{"."}, "Directories to watch")
+	rootCmd.Flags().StringSlice("exclude", []string{".git"}, "Directories to ignore")
+	rootCmd.Flags().BoolP("recursive", "r", false, "recursively watch subdirectories")
+	rootCmd.Flags().StringSliceP("match", "m", []string{"*", "*.*", "**/*"}, "Match with given globs (supports glob pattern), by default matches everything")
 	rootCmd.Flags().DurationP("debounce", "d", time.Microsecond, "Debounce time (wait time before executing command or receiving another event)")
 	rootCmd.Flags().BoolP("verbose", "v", false, "Verbose logging")
 	if runtime.GOOS == "windows" {
