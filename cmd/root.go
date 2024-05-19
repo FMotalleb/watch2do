@@ -115,7 +115,7 @@ func getTriggerFlags(flags *pflag.FlagSet) []fsnotify.Op {
 func init() {
 	rootCmd.Flags().StringSliceP("execute", "x", []string{}, "Commands to execute after receiving a change event")
 	rootCmd.Flags().Bool("no-kill", false, "Don't kill old processes from last trigger")
-	rootCmd.Flags().StringSliceP("watch", "w", []string{}, "Files/Directories to watch (supports glob pattern)")
+	rootCmd.Flags().StringSliceP("watch", "w", []string{"*", "**/*"}, "Files/Directories to watch (supports glob pattern)")
 	rootCmd.Flags().DurationP("debounce", "d", time.Microsecond, "Debounce time (wait time before executing command or receiving another event)")
 	rootCmd.Flags().BoolP("verbose", "v", false, "Verbose logging")
 	if runtime.GOOS == "windows" {
