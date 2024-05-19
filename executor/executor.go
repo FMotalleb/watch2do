@@ -41,7 +41,9 @@ func pop() (a int) {
 	return
 }
 func push(pid int) {
-	pids = append(pids, pid)
+	if cmd.Params.KillBeforeExecute {
+		pids = append(pids, pid)
+	}
 }
 
 func RunCommands() {
@@ -93,25 +95,28 @@ func RunCommands() {
 }
 
 func killOldInstances(logger *logrus.Entry) {
-	for _, pid := range pids {
-		killProcess(logger, pid)
+	if len(pids) < 1 {
+		logger.Infoln("No old process was found")
+		return
 	}
-}
-
-func killProcess(logger *logrus.Entry, pid int) {
 	processes, err := process.Processes()
 	warnOn(logger, "Failed to retrieve processes", err)
 	if err != nil {
 		return
 	}
+	for _, pid := range pids {
+		killProcess(logger, pid, processes)
+	}
+}
 
+func killProcess(logger *logrus.Entry, pid int, processes []*process.Process) {
 	for _, p := range processes {
 		ppid, err := p.Ppid()
 		if err != nil {
 			continue
 		}
 		if int(ppid) == pid {
-			killProcess(logger, int(p.Pid))
+			killProcess(logger, int(p.Pid), processes)
 			p.Kill()
 		}
 		if int(p.Pid) == pid {
