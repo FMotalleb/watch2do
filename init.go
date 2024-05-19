@@ -19,16 +19,17 @@ func init() {
 }
 
 func validateCliParams() {
+	log := log.WithField("params", cmd.Params)
 	if len(cmd.Params.Commands) < 1 {
-		log.Panicln("commands must have at least a single value")
+		log.Panicln("commands must have at least a single value.")
 	}
 	if len(cmd.Params.WatchList) < 1 {
-		log.Panicln("commands must have at least a single value")
+		log.Panicln("commands must have at least a single value.")
 	}
 	if len(cmd.Params.Operations) < 1 {
 		log.Panicln("no operation to act on, stopping.")
 	}
 	if len(cmd.Params.MatchList) < 1 {
-		log.Panicln("no MatchList to match against, stopping.")
+		log.Panicln("no matchList to match against, stopping.")
 	}
 }
