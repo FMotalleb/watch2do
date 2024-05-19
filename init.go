@@ -28,4 +28,7 @@ func validateCliParams() {
 	if len(cmd.Params.Operations) < 1 {
 		log.Panicln("no operation to act on, stopping.")
 	}
+	if len(cmd.Params.MatchList) < 1 {
+		log.Panicln("no MatchList to match against, stopping.")
+	}
 }
